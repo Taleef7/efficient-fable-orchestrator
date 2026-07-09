@@ -132,11 +132,21 @@ subagent whose prompt tells it to act as one.
 Agent({
   description: "Driver: implement <lane>",
   model: "sonnet",
-  isolation: "worktree",        // when the lane mutates files, to avoid collisions with other lanes
+  isolation: "worktree",        // treat as mandatory whenever 2+ lanes run concurrently against the same repo
   run_in_background: true,      // default; lets multiple lanes run concurrently
   prompt: "<see template below>"
 })
 ```
+
+**`isolation: "worktree"` is not optional once you have more than one lane running
+concurrently against the same repo — confirmed the hard way.** A 4-lane test run without
+it left every lane sharing one working directory: three separate drivers independently
+discovered the collision risk on `handoff.json`/`handoff.md` and each invented its own
+`-taskname` suffix to avoid clobbering another lane's file, entirely on their own
+initiative. That's a sign the drivers are competent, not a sign the setup was fine — it
+means for months the recipe here relied on drivers noticing and working around a gap
+rather than the gap not existing. Give every concurrent lane its own worktree; don't rely
+on a driver noticing the problem for you.
 
 **There is no confirmed "effort" parameter for a native Sonnet subagent** the way Grok and
 Codex have `--reasoning-effort` / `model_reasoning_effort`. "Low effort" for the driver is
@@ -166,6 +176,9 @@ treatment) for that lane rather than failing the whole lane silently.
 grok -p "<full task prompt>" --reasoning-effort <level> --no-subagents --always-approve
 ```
 Valid levels: `none, minimal, low, medium, high, xhigh, max`. All confirmed working.
+**Grok's actual model name is `grok-4.5`** (confirmed via `grok models`) — don't guess at
+a variant name (e.g. a "-fast" suffix); if unsure, run `grok models` to list what's
+actually available on the account before assuming a name.
 **`--always-approve` is needed for unattended/headless runs** — without it, Grok can stop
 and wait on a tool-execution approval prompt the same way Codex does without a sandbox
 flag. (`--permission-mode bypassPermissions` is an equivalent alternative also confirmed
@@ -263,12 +276,17 @@ protect. So do the distillation **once**, not per lane:
   from a prompt, to `cat` the relevant section and include it) before starting. This shifts
   the reading cost onto the driver and delegate — cheap, and work they'd need to do
   anyway — instead of onto your own output tokens.
-- **Background stays per-task, but keep it to pointers, not paragraphs.** What a task
-  connects to (relevant files, the pattern to stay consistent with) is genuinely
-  task-specific and doesn't belong in the shared file — but a sentence of pointers beats
-  three sentences of reconstructed narrative. "Follows the same shape as the enrollment
-  define in `hazwoper.cql`" carries as much signal as a paragraph, for a fraction of the
-  tokens.
+- **Background stays per-task, but keep it to pointers, not paragraphs — and keep it OUT
+  of the shared file, full stop.** What a task connects to (relevant files, the pattern
+  to stay consistent with) is genuinely task-specific and belongs in the driver prompt's
+  own `Background` field, never appended to `orchestrator-context.md`. This isn't
+  theoretical: a driver under real testing appended a "Task-specific override" section
+  to the shared file (a note about not touching a sibling task's tests) instead of
+  keeping it in its own prompt — harmless that one time, but the shared file accumulates
+  every lane's leftover task notes if this isn't caught, until it's no longer a clean
+  repo-wide reference and every future lane pays to skim past stale, irrelevant context.
+  If you notice a driver has written task-specific content into the shared file, remove
+  it on the next lane you spawn.
 - **Update the file when a lane reveals a gap, not on every lane.** If a delegate's output
   shows the ground-rules file was missing something load-bearing, fix the file once —
   every later lane benefits, instead of you re-explaining the same gap each time.
@@ -377,6 +395,48 @@ probe step errors), say so plainly and fall back to Tier-1-style Sonnet subagent
 everything above Tier 0. Don't silently downgrade without telling the user — the whole
 point of this mode is conserving a specific resource, and if the fallback means you're
 burning that resource after all, they should know.
+
+## What's actually been proven vs. designed-but-untested
+
+Everything in this skill has now been exercised at least once against real tasks, real
+delegates, and (for the GitHub flow) a real repo — not just designed and assumed to
+work. Worth knowing what each test actually showed, including where it surprised the
+design:
+
+- **Tier 3/4 paths, real tasks:** Grok 4.5 at `high` found and fixed a genuine
+  operator-precedence bug in one pass. GPT-5.6 Terra at `xhigh` implemented a tiered
+  discount function correctly against its stated spec in one pass.
+- **The second-opinion review step (Tier 2-3, "a second CLI reviews the diff") earns
+  its cost.** A separate Grok `max` call reviewing Terra's already-passing, already-
+  tested diff caught two real gaps the implementer missed entirely: booleans silently
+  accepted as valid numeric input, and NaN not rejected. Independently confirmed both
+  by hand. This is the clearest evidence in this skill that the review step isn't
+  ceremony.
+- **Multi-round re-invocation is real and was manually exercised successfully**, but
+  three separate honest attempts to trigger it *organically* — including one with a
+  genuinely tricky Python gotcha (bool being a subclass of int) deliberately withheld
+  from the task prompt — all resulted in the delegate getting it right on the first
+  pass anyway, because it read the existing test file itself and caught the trap
+  unprompted. Read this as evidence that capable delegates rarely need the retry path
+  on well-scoped Tier 1-2 work with an existing test file to read against, not as
+  evidence the mechanism is unnecessary — it's a safety net for genuine ambiguity or
+  harder tasks, not something that should be expected to fire often.
+- **The real GitHub issue → delegate → PR flow works end-to-end**, verified against an
+  actual (throwaway, private) repo: a real issue, a real linked PR (`Closes #N`), correct
+  diff, not merged, `gh issue view`/`gh pr view` confirmed both independently rather than
+  trusting the driver's report.
+- **Concurrent lanes without `isolation: "worktree"` will collide on shared filenames**
+  (see the Mechanism section) — caught because three independent drivers all noticed and
+  worked around it themselves, which is a sign the fallback behavior is reasonable, not
+  a substitute for giving every lane its own worktree.
+- **The ground-rules file can get polluted with task-specific notes** if a driver isn't
+  explicitly told to keep them out of it (see "Carrying project context to delegates") —
+  caught once, fixed in the instructions, confirmed clean on the next real-repo run.
+- **The Windows Codex sandbox bug (`CreateProcessAsUserW`) and its
+  `--dangerously-bypass-approvals-and-sandbox` fix reconfirmed across four independent
+  real invocations**, not just the first discovery — including one case where Codex's
+  own self-verification hit the bug but its file edits had already landed successfully
+  first, so the task still completed without needing the retry. The fix generalizes.
 
 ## My current setup (reference, not load-bearing for the skill logic)
 
