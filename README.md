@@ -137,6 +137,22 @@ reporting.
    each CLI's own `--help`, not copied from mine.
 3. Dry-run it on a throwaway repo before trusting it on real work.
 
+## What you're trusting the delegates with
+
+Be clear-eyed about this before installing it. Both CLIs run unattended, with
+auto-approve flags (`grok --always-approve`, `codex approval: never`) — that's required
+for headless automation, not an oversight, but it means a delegate's shell commands
+execute with no per-action confirmation. Normally that's scoped to an isolated git
+worktree (see `isolation: "worktree"` in `SKILL.md`), which is the actual safety
+boundary.
+
+On Windows specifically, a known Codex sandbox bug forces a fallback to
+`--dangerously-bypass-approvals-and-sandbox`, which drops OS-level sandboxing entirely
+and leaves worktree isolation as the *only* remaining boundary. Full details, including
+why, in the "Known-good invocation shapes" section of
+[`SKILL.md`](efficient-fable-orchestrator/SKILL.md#L213). If you're not comfortable with
+that tradeoff on Windows, don't grant it and let the lane fall back to Grok instead.
+
 ## For AI agents
 
 If you're an LLM being asked to install, adapt, or extend this on someone's behalf, read

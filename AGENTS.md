@@ -21,6 +21,15 @@ no config file to generate). If the user is on a platform other than Claude Code
 and ask before improvising an equivalent, this skill's mechanism (spawning Sonnet
 subagents via Claude Code's Agent tool) doesn't have a guaranteed equivalent elsewhere.
 
+## Tell the human what they're agreeing to
+
+This skill runs delegate CLIs unattended, with auto-approve flags, and on Windows a known
+Codex sandbox bug forces a fallback that drops OS-level sandboxing entirely (see the
+README's "What you're trusting the delegates with"). If you're installing this on
+someone's behalf, surface that tradeoff to them explicitly before you finish, don't just
+silently install it and move on. This is exactly the kind of thing a human would want
+flagged rather than discovered later.
+
 ## Don't wire it up to auto-run
 
 This skill is opt-in by design (`SKILL.md`'s own description says so explicitly). If
