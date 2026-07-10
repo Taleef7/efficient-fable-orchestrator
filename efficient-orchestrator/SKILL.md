@@ -440,6 +440,13 @@ design:
 
 ## My current setup (reference, not load-bearing for the skill logic)
 
+- **Subscriptions, roughly $150/month total:** Claude Max 5x (~$100/mo) is the orchestrator
+  plan this mode exists to protect; ChatGPT Plus (~$20/mo) backs Codex CLI; SuperGrok
+  (~$30/mo, often a free first week on signup) backs Grok CLI. This is the actual
+  cost basis the "lean on Grok/Codex" trade in this skill's framing assumes — if your own
+  subscription mix is different, the "which resource is scarce for me" calculus changes
+  and you should re-derive it rather than copy mine (see "Adapting the model routing"
+  in the README).
 - Delegates on hand: Grok CLI (`grok`, SuperGrok-backed, model Grok 4.5) and Codex CLI
   (`codex`, ChatGPT Plus-backed, models `gpt-5.6-luna` and `gpt-5.6-terra`).
 - Orchestrator: this session (Claude, Max plan) — the resource this mode exists to

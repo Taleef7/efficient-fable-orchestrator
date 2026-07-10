@@ -60,6 +60,21 @@ subscription), this skill probably isn't useful to you as-is.
 - You don't need both delegates — the skill degrades gracefully to whichever is
   available, and reports plainly (not silently) when it has to.
 
+**My own setup, for reference — roughly $150/month total:**
+
+| Plan | Cost | What it backs |
+|---|---|---|
+| Claude Max 5x | ~$100/mo | The orchestrator itself — the resource this skill exists to protect |
+| ChatGPT Plus | ~$20/mo | Codex CLI (GPT-5.6 Luna / Terra delegates) |
+| SuperGrok | ~$30/mo (often a free first week) | Grok CLI (Grok 4.5 delegate) |
+
+This is the actual trade the skill's framing assumes: two ~$20-30/mo plans with more
+usage headroom absorbing work that would otherwise eat into a ~$100/mo plan's tighter
+quota. If your own subscription mix is different — say you only have ChatGPT Plus, or
+your bottleneck isn't Claude at all — the math changes, and you should re-derive which
+resource is actually scarce for *you* before assuming this skill helps. See "Adapting
+the model routing to your own setup" below.
+
 ## Install
 
 ```bash
@@ -156,15 +171,41 @@ own machine, which has an unusually large number of MCP servers and skills insta
 Your own overhead may be meaningfully lower with a leaner setup — recalibrate rather
 than trusting that number as a constant.
 
-## Adapting this for yourself
+## Adapting the model routing to your own setup
 
 The tier table hardcodes specific model names and effort ceilings (Grok 4.5,
-`gpt-5.6-luna`, `gpt-5.6-terra`) that reflect what I currently have access to and what
-those models were called as of mid-2026. Model lineups and names change. If you fork
-this, expect to update the routing table and the confirmed CLI invocation flags — the
-skill file's own "discover before you invoke" step is there specifically because CLI
-flags and model names drift, and you should treat that principle as the durable part,
-not the specific strings.
+`gpt-5.6-luna`, `gpt-5.6-terra`) that reflect what I currently have access to and pay
+for. **This is the part of the skill that's specific to me, not a universal
+recommendation** — swap it for whatever you actually subscribe to. The durable part is
+the *shape* of the protocol (tiers, driver subagents, discover-before-invoke, ground-rules
+file, terse reporting), not these exact strings.
+
+To adapt it:
+
+1. **Figure out which resource is actually scarce for you.** The whole skill is built
+   around protecting one tight resource by spending on looser ones. If you're not
+   quota-constrained on Claude, or you don't have a second/third AI subscription with
+   spare headroom, this skill's core trade doesn't apply to you as-is — see "The actual
+   goal" above before you invest time adapting it.
+2. **Edit the "Tiers and routing" table** in
+   [`efficient-orchestrator/SKILL.md`](efficient-orchestrator/SKILL.md) — swap in
+   whatever delegate CLIs and models you actually have (e.g. Gemini CLI, a different
+   OpenAI model tier, a local model via Ollama). Keep the shape: cheapest-sufficient
+   delegate per tier, an explicit effort ceiling per delegate so nothing accidentally
+   burns your most expensive tier on menial work.
+3. **Update "Known-good invocation shapes"** with your own CLI's actual flags — don't
+   trust mine. Run the "discover before you invoke" probe (`<cli> --help`) yourself
+   first; the skill leans on this step specifically because flags and model names go
+   stale fast. If you confirm something new, consider sending a PR (see Contributing).
+4. **Update "My current setup"** at the bottom of `SKILL.md` with your own subscription
+   mix and confirmed CLI versions — this section is deliberately marked
+   "reference, not load-bearing," so getting it right doesn't require touching the
+   protocol logic above it.
+5. **Re-run a dry run** on a throwaway repo before trusting it on real work — the
+   "What's actually proven" section below is a good checklist of what to personally
+   re-verify (Tier 0 carve-out, worktree isolation on parallel lanes, stateless-CLI
+   context resupply) since none of that is guaranteed to transfer cleanly to a different
+   CLI's actual behavior.
 
 ## Contributing
 
