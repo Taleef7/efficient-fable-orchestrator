@@ -24,6 +24,16 @@ Agent tool / Task tools the usual way. Only switch into this mode when the user 
 it by name, because it changes your default behavior (delegate first, implement only as
 a last resort) in a way that would be wrong to apply silently to every request.
 
+**"Fable" is a name for a seat, not a specific model.** Whatever Claude model is running
+the current session when this skill activates is "Fable" for the purposes of this skill
+— Sonnet, Opus, a future model, whatever the user actually has. Nothing in this
+mechanism requires a specific model line; the mechanism only cares that *some* model is
+doing the orchestrating and *not* doing the implementing. If the orchestrating model
+happens to already be the same tier as the Sonnet drivers this mode spawns, the savings
+still hold, they just come entirely from moving the reasoning-heavy work off the Claude
+meter onto Grok/Codex, not from the driver itself being a cheaper model than the
+orchestrator.
+
 **What this mode actually optimizes for, in priority order:**
 1. **Weekly Claude/Fable usage — the primary, confirmed target.** The orchestrating model
    does almost no implementation itself, so its own weekly allocation barely moves no
@@ -70,9 +80,16 @@ You are the planner, delegator, monitor, and final reviewer. Concretely:
 4. **Monitor and steer**, not implement. Check on background lanes, read their handoff
    files, redirect them when they're off track, but resist the pull to just fix it
    yourself because that would be faster in the moment — it defeats the point.
-5. **Personally review** only the things that matter most: Tier 3+ diffs, anything the
-   user flagged, and anything a delegate itself flagged as uncertain.
-6. **Never merge without explicit permission.** Every finished lane ends at an open PR.
+5. **Spawn an independent review lane for every Tier 2+ lane** (a second short-lived
+   driver, a different delegate than the one that implemented, reviewing the diff before
+   you look at it yourself) — this isn't optional polish. A real test found two genuine
+   bugs a passing, tested diff had missed, which is the actual justification for this
+   step existing at all (see "What's actually been proven"). Tier 1 doesn't need it; a
+   passing test suite plus your own spot-check is enough there.
+6. **Personally review** the things that most need a human-caliber judgment call: Tier
+   3+ diffs even after delegate review, anything the user flagged, and anything a
+   delegate itself flagged as uncertain.
+7. **Never merge without explicit permission.** Every finished lane ends at an open PR.
    The user merges, unless they say up front (this session) that you're authorized to
    merge automatically.
 
@@ -102,7 +119,7 @@ work directly; delegate everything from Tier 1 up.
 | **1 — Low** | Small well-specified feature, a test file, a straightforward fixture | GPT-5.6 Luna | `low` or `medium` |
 | **2 — Medium** | Non-trivial logic, an integration, a spike with some ambiguity | Grok 4.5 **or** GPT-5.6 Luna — split preferred across lanes | Grok: `medium`/`high` · Luna: `high` (Luna's hard ceiling everywhere) |
 | **3 — High** | Hard bugs, architecture-touching changes, security-relevant work, large refactors | Grok 4.5 **or** GPT-5.6 Terra — split preferred, or both on the same lane for a second opinion | Grok: `high` · Terra: `high` |
-| **4 — Flagged / ultra-max** | Anything the user explicitly wants eyes on: schema changes, prod-impacting decisions, irreversible ops | Grok 4.5 **and** GPT-5.6 Terra, leaning toward Terra | Grok: `max` (its ceiling) · Terra: `xhigh` (hard ceiling — see note below) |
+| **4 — Flagged** | Anything the user explicitly wants eyes on: schema changes, prod-impacting decisions, irreversible ops | Terra `xhigh` implements; Grok `max` reviews independently, always both, never solo | Grok: `max` (its ceiling) · Terra: `xhigh` (hard ceiling — see note below) |
 
 **Hard ceilings — never exceed these, even when the CLI's own enum allows more:**
 - **GPT-5.6 Luna** — never above `high`. Codex's model cache may report `xhigh`/`max` as
@@ -110,9 +127,9 @@ work directly; delegate everything from Tier 1 up.
   Luna is the fast/cheap tier by design — if a task needs more than `high` from Luna,
   it belongs on Grok or Terra instead, not on a higher-effort Luna call.
 - **GPT-5.6 Terra** — never above `xhigh`, even though Terra's own enum goes up to
-  `ultra`. Don't confuse Terra's own `ultra` *reasoning-effort level* with this skill's
-  *Tier* "4 — ultra/max" naming — they are unrelated, and this skill intentionally never
-  invokes Terra above `xhigh`.
+  `ultra`. Don't confuse Terra's own `ultra` *reasoning-effort level* with Tier 4 in this
+  skill's own routing table — they're unrelated names that happen to sound alike, and
+  this skill intentionally never invokes Terra above `xhigh`.
 - **Grok 4.5** — ceiling is `max` (its highest confirmed level), reserved for Tier 4.
 
 When unsure between two tiers, round down and see how the delegate does — escalating a
@@ -147,6 +164,21 @@ initiative. That's a sign the drivers are competent, not a sign the setup was fi
 means for months the recipe here relied on drivers noticing and working around a gap
 rather than the gap not existing. Give every concurrent lane its own worktree; don't rely
 on a driver noticing the problem for you.
+
+**Worktree isolation prevents lanes from clobbering each other's working files, it does
+not prevent their PRs from conflicting with each other later.** If two concurrent lanes
+touch overlapping code, both can pass their own tests and still produce PRs that conflict
+on merge — this skill has no mechanism for detecting that ahead of time. Keep lane
+boundaries file/module-scoped when you plan the breakdown (step 1 of "Your role"), and if
+you can't cleanly separate two lanes that way, don't run them concurrently; sequence them
+instead. This hasn't been tested against a real conflicting-lane scenario, treat it as a
+known design gap, not a solved problem.
+
+**There's no confirmed cap on how many lanes you can run concurrently** beyond whatever
+concurrency limit your own environment's Agent tool enforces (check your own environment;
+don't assume unlimited). This skill has only been exercised at 4 concurrent lanes.
+Fan-out much beyond that without having verified your environment handles it is
+speculative, not confirmed.
 
 **There is no confirmed "effort" parameter for a native Sonnet subagent** the way Grok and
 Codex have `--reasoning-effort` / `model_reasoning_effort`. "Low effort" for the driver is
@@ -393,10 +425,11 @@ driver's raw output themselves.
 ## Review and merge discipline
 
 - Every finished lane surfaces as an open PR, never an auto-merge.
-- For Tier 2-3 lanes, a second CLI call (the *other* delegate, at medium/high effort)
-  reviewing the diff before you look at it is worth the cost — catches issues you'd
-  otherwise have to catch yourself.
-- For Tier 4, do your own close read of the diff in addition to any delegate review —
+- Tier 2+ gets an independent second-opinion review lane, required, not optional (see
+  "Your role," step 5). Use the *other* delegate than whichever implemented, at
+  medium/high effort — this is what catches the class of issue a passing test suite
+  doesn't (see "What's actually been proven").
+- For Tier 4, do your own close read of the diff in addition to the delegate review —
   this is the one place your own judgment is the point, not a cost to avoid.
 - If the user says up front, this session, that you're authorized to merge automatically,
   honor that — but the default is always "opens a PR and stops."
