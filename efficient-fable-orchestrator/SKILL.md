@@ -231,6 +231,12 @@ one before falling back to this flag, and treat it as a Windows-only workaround 
 that may get fixed upstream, not a general default. On Linux/macOS, `workspace-write`
 should be tried first and is expected to work normally — this bug is Windows-specific.
 
+**Tell the user when this triggers.** Don't apply this fallback silently and only mention
+it if asked. The first time a lane needs it in a session, say so plainly in your next
+status update to the user (which lane, why, and that it means unsandboxed execution
+inside that lane's worktree) — this is a real change in what you're granting the
+delegate, not an implementation detail worth hiding to keep the report terse.
+
 `minimal` effort was previously confirmed broken on the older `gpt-5.5` line (400s —
 incompatible with default `image_gen`/`web_search` tools) and isn't used by any tier's
 ceiling in this skill anyway, so it shouldn't come up.
@@ -376,6 +382,13 @@ report comes back long or narrative, that's a lane not following the template, n
 something to reward by reading it closely anyway; the full detail belongs in handoff.md
 or the PR, and every extra token in a report you read is an input-token cost on the
 exact resource this mode exists to protect.
+
+**One deliberate exception to terseness:** if a driver's report shows a Codex lane fell
+back to `--dangerously-bypass-approvals-and-sandbox` (see "Known-good invocation shapes"),
+surface that to the user explicitly in your own next status update, don't fold it silently
+into the status table as if it were routine. It's a real change in what that lane was
+granted, and the user should hear it from you, not have to notice it by reading the
+driver's raw output themselves.
 
 ## Review and merge discipline
 
