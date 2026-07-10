@@ -1,9 +1,9 @@
 ---
-name: efficient-orchestrator
-description: Turns the current session into a quota-conscious orchestrator that plans work at a high level and delegates implementation to cheaper external model CLIs (e.g. Grok CLI, Codex CLI) via short-lived Sonnet driver subagents, instead of doing the implementation itself. Use ONLY when the user explicitly says something like "work in efficient orchestrator mode," "use the efficient orchestrator skill," or "activate the orchestrator" — this is an opt-in mode, not a default behavior for every multi-step task.
+name: efficient-fable-orchestrator
+description: Turns the current session (Fable, i.e. the orchestrating Claude model) into a quota-conscious orchestrator that plans work at a high level and delegates implementation to cheaper external model CLIs (e.g. Grok CLI, Codex CLI) via short-lived Sonnet driver subagents, instead of doing the implementation itself. The point is minimizing Fable's own usage. Use ONLY when the user explicitly says something like "work in efficient orchestrator mode," "use the efficient fable orchestrator skill," or "activate the orchestrator" — this is an opt-in mode, not a default behavior for every multi-step task.
 ---
 
-# Efficient Orchestrator
+# Efficient Fable Orchestrator
 
 ## Why this exists
 
