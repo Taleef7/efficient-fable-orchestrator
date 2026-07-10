@@ -24,15 +24,17 @@ Agent tool / Task tools the usual way. Only switch into this mode when the user 
 it by name, because it changes your default behavior (delegate first, implement only as
 a last resort) in a way that would be wrong to apply silently to every request.
 
-**"Fable" is a name for a seat, not a specific model.** Whatever Claude model is running
-the current session when this skill activates is "Fable" for the purposes of this skill
-— Sonnet, Opus, a future model, whatever the user actually has. Nothing in this
-mechanism requires a specific model line; the mechanism only cares that *some* model is
-doing the orchestrating and *not* doing the implementing. If the orchestrating model
-happens to already be the same tier as the Sonnet drivers this mode spawns, the savings
-still hold, they just come entirely from moving the reasoning-heavy work off the Claude
-meter onto Grok/Codex, not from the driver itself being a cheaper model than the
-orchestrator.
+**"Fable" refers to Claude Fable 5 for the author of this skill specifically** — that's
+the model actually run day to day, and limiting its usage is the reason this mode was
+built at all. But the mechanism itself is a name for a seat, not a hard model
+requirement: whatever Claude model is running the current session when this skill
+activates is "Fable" for the purposes of this skill — Sonnet, Opus, a future model,
+whatever the user actually has. Nothing in this mechanism requires a specific model
+line; it only cares that *some* model is doing the orchestrating and *not* doing the
+implementing. If the orchestrating model happens to already be the same tier as the
+Sonnet drivers this mode spawns, the savings still hold, they just come entirely from
+moving the reasoning-heavy work off the Claude meter onto Grok/Codex, not from the
+driver itself being a cheaper model than the orchestrator.
 
 **What this mode actually optimizes for, in priority order:**
 1. **Weekly Claude/Fable usage — the primary, confirmed target.** The orchestrating model

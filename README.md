@@ -10,12 +10,16 @@ implementation work to other AI CLIs (Grok CLI, Codex CLI) you're already paying
 instead of burning your Claude usage on the grind.
 
 "Fable" is what I call the orchestrating Claude model here, the one planning and
-delegating instead of coding. It's also Anthropic's current model-line name, but that's
-a coincidence, not a requirement. **"Fable" is a name for whichever seat is orchestrating,
-not a specific model you need.** Whatever Claude model is running your session when you
-activate this skill is Fable for that session, Sonnet, Opus, whatever you're on. Nothing
-about the mechanism cares which one; it only cares that the orchestrating model stops
-implementing and starts delegating. Swap the name in your head if it helps.
+delegating instead of coding. It's not a placeholder name, it's literal: Claude Fable 5
+is the actual model I run day to day, and limiting its usage specifically is the entire
+reason this skill exists.
+
+That said, the mechanism itself doesn't care which model sits in that seat. Whatever
+Claude model is running your session when you activate this skill is Fable for that
+session, Sonnet, Opus, whatever you're on. Nothing here checks or requires a specific
+model line, it only cares that the orchestrating model stops implementing and starts
+delegating. So if you're not on Fable 5, or Anthropic ships something else next, swap
+the name in your head, the skill still does the same job.
 
 ## Where this came from
 
