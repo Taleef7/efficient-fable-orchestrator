@@ -1,5 +1,9 @@
 # efficient-orchestrator
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
+[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-5A45FF)](https://docs.claude.com/en/docs/claude-code/skills)
+
 A [Claude Code](https://claude.com/claude-code) skill that turns a session into a
 quota-conscious orchestrator: it plans at a high level and delegates actual
 implementation work to other AI CLIs (Grok CLI, Codex CLI) you already pay for,
@@ -67,6 +71,40 @@ Then in a Claude Code session: *"work in efficient orchestrator mode"* (or "use 
 efficient orchestrator skill" / "activate the orchestrator"). It's opt-in by design —
 it won't change how normal sessions behave otherwise.
 
+## Example
+
+**User**: *"work in efficient orchestrator mode. There's a pricing bug in
+`pricing.py` — bulk discounts aren't applying at the tier boundaries. Fix it."*
+
+**Claude (orchestrator)**: classifies this as Tier 3 (a real bug, non-trivial logic,
+worth a second opinion) rather than implementing it directly. Spawns one Sonnet driver
+subagent in an isolated worktree, instructing it to shell out to `grok --reasoning-effort
+high` to fix the bug, then a second driver to independently review the resulting diff via
+a separate `grok --reasoning-effort max` call before anything gets proposed as done.
+
+**What actually happened when this was run** (this is a real result from testing, not a
+hypothetical): the implementing delegate fixed the stated boundary bug correctly. The
+*separate* review-pass delegate — looking only at the diff, with no memory of the first
+call — caught two things the implementer missed: booleans were being silently accepted as
+numeric discount input, and `NaN` wasn't being rejected. Both were real gaps in an
+already-passing, already-tested diff.
+
+**Driver's report back to the orchestrator** (deliberately terse — this is the whole
+point of the protocol):
+
+```
+- Status: complete, PR opened
+- Delegate: Grok 4.5 (implement: high, review: max)
+- PR: <link> — Closes #<issue>
+- Review flagged 2 additional gaps beyond the stated bug (bool/NaN handling as discount
+  input) — both fixed in the same PR before opening it
+- Nothing needs your judgment call; tests pass, diff is small
+```
+
+The orchestrator never opened `pricing.py`. Its own context stayed almost entirely on
+"is this the right scope, is this fix good enough to open a PR" — not on writing or
+re-reading the implementation.
+
 ## What's actually proven vs. what isn't
 
 I built and iterated on this against direct, repeated testing, not just vibes — but I
@@ -127,6 +165,11 @@ this, expect to update the routing table and the confirmed CLI invocation flags 
 skill file's own "discover before you invoke" step is there specifically because CLI
 flags and model names drift, and you should treat that principle as the durable part,
 not the specific strings.
+
+## Contributing
+
+Model names and CLI flags drift — that's the most useful thing to send a PR for. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
